@@ -108,6 +108,38 @@ namespace {
         }
     }
 
+    void print_display_flags_to_stream(std::ostream& stream, DWORD flags)
+    {
+        stream << "0x" << std::hex << std::setfill('0') << std::setw(8) << flags << std::dec;
+
+        if (flags != 0) {
+            bool first = true;
+
+            if ((flags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) == DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+                if (first) { stream << " ("; }
+                else { stream << ", "; }
+                stream << "display attached";
+                first = false;
+            }
+
+            if ((flags & DISPLAY_DEVICE_PRIMARY_DEVICE) == DISPLAY_DEVICE_PRIMARY_DEVICE) {
+                if (first) { stream << " ("; }
+                else { stream << ", "; }
+                stream << "primary display";
+                first = false;
+            }
+
+            if ((flags & DISPLAY_DEVICE_UNSAFE_MODES_ON) == DISPLAY_DEVICE_UNSAFE_MODES_ON) {
+                if (first) { stream << " ("; }
+                else { stream << ", "; }
+                stream << "unsafe modes on";
+                first = false;
+            }
+
+            if (!first) { stream << ")"; }
+        }
+    }
+
     void create_texture_backed_render_targets(GLuint* const framebuffers,
         GLuint* const color_attachments,
         size_t n,
@@ -660,36 +692,8 @@ namespace {
 
             while (wglEnumGpuDevicesNV(gpu, device_index, &gpu_device)) {
                 std::cout << "  Device " << device_index << ": ";
-                std::cout << gpu_device.DeviceString << ", " << gpu_device.DeviceName;
-                std::cout << ", 0x" << std::hex << std::setfill('0') << std::setw(8) << gpu_device.Flags << std::dec;
-
-                if (gpu_device.Flags != 0) {
-                    bool first = true;
-
-                    if (gpu_device.Flags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
-                        if (first) { std::cout << " ("; }
-                        else { std::cout << ", "; }
-                        std::cout << "display attached";
-                        first = false;
-                    }
-
-                    if (gpu_device.Flags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
-                        if (first) { std::cout << " ("; }
-                        else { std::cout << ", "; }
-                        std::cout << "primary display";
-                        first = false;
-                    }
-
-                    if (gpu_device.Flags & DISPLAY_DEVICE_UNSAFE_MODES_ON) {
-                        if (first) { std::cout << " ("; }
-                        else { std::cout << ", "; }
-                        std::cout << "unsafe modes on";
-                        first = false;
-                    }
-
-                    if (!first) { std::cout << ")"; }
-                }
-
+                std::cout << gpu_device.DeviceString << ", " << gpu_device.DeviceName << ", "; 
+                print_display_flags_to_stream(std::cout, gpu_device.Flags);
                 std::cout << std::endl;
 
                 ++device_index;
@@ -925,6 +929,72 @@ namespace {
 int
 main(int argc, char* argv[])
 {
+    //------------------------------------------------------------------------------
+    // Enumerate display devices.
+    DISPLAY_DEVICE display_device = {};
+    display_device.cb = sizeof(display_device);
+
+    DWORD display_device_index = 0;
+
+    while (EnumDisplayDevices(nullptr, display_device_index, &display_device, 0)) {
+        std::cout << display_device.DeviceName << ", ";
+        std::cout << display_device.DeviceString << ", ";
+        std::cout << display_device.DeviceID << ", ";
+        std::cout << display_device.DeviceKey << ", ";
+        print_display_flags_to_stream(std::cout, display_device.StateFlags);
+        std::cout << std::endl;
+
+        ++display_device_index;
+
+        DEVMODE device_mode = {};
+        device_mode.dmSize = sizeof(device_mode);
+
+        if ((0)) {
+            DWORD mode_index = 0;
+
+            while (EnumDisplaySettingsEx(display_device.DeviceName, mode_index, &device_mode, 0)) {
+                std::cout << "  " << device_mode.dmPelsWidth << " x " << device_mode.dmPelsHeight << " @ " << device_mode.dmDisplayFrequency << " Hz" << std::endl;
+                ++mode_index;
+            }
+        }
+        else {
+            if (EnumDisplaySettingsEx(display_device.DeviceName, ENUM_CURRENT_SETTINGS, &device_mode, 0)) {
+                std::cout << "  " << device_mode.dmPelsWidth << " x " << device_mode.dmPelsHeight << " @ " << device_mode.dmDisplayFrequency << " Hz" << std::endl;
+            }
+        }
+    }
+
+    //------------------------------------------------------------------------------
+    // Enumerate display monitors.
+    if (EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR monitor, HDC display_context, LPRECT virtual_screen_rect, LPARAM user_data) {
+        MONITORINFOEX monitor_info = {};
+        monitor_info.cbSize = sizeof(monitor_info);
+
+        bool is_primary = false;
+
+        if (GetMonitorInfo(monitor, &monitor_info) != 0) {
+            std::cout << "Monitor " << monitor_info.szDevice << ": ";
+            is_primary = ((monitor_info.dwFlags & MONITORINFOF_PRIMARY) == MONITORINFOF_PRIMARY);
+        }
+        else {
+            std::cout << "Monitor 0x" << monitor << ": ";
+        }
+
+        std::cout << "(" << virtual_screen_rect->left << " / " << virtual_screen_rect->top << ") [" << (virtual_screen_rect->right - virtual_screen_rect->left) << " x " << (virtual_screen_rect->bottom - virtual_screen_rect->top) << "]";
+
+        if (is_primary) {
+            std::cout << " (primary)";
+        }
+
+        std::cout << std::endl;
+
+        return TRUE;
+    }, 0) == 0)
+    {
+        std::cerr << "Failed to enumerate displays!" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     nvapi();
     std::cout << std::endl;
     directx();
