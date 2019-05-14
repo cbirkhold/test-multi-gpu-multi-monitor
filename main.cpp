@@ -95,6 +95,14 @@ namespace {
 
     LRESULT CALLBACK window_callback(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
+        if ((uMsg == WM_ERASEBKGND) || (uMsg == WM_PAINT)) {
+            return TRUE;
+        }
+
+        if (uMsg == WM_DISPLAYCHANGE) {
+            std::cerr << "Warning: Display change occured. This application is not designed to handle such changes at runtime!" << std::endl;
+        }
+
         return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
 
