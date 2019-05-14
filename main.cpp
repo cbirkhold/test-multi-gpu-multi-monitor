@@ -216,10 +216,10 @@ namespace {
                 return program;
             }
             catch (std::exception& e) {
-                std::cerr << e.what() << std::endl;
+                std::cerr << "Exception: " << e.what() << std::endl;
             }
             catch (...) {
-                std::cerr << "Exception!" << std::endl;
+                std::cerr << "Exception: <unknown>!" << std::endl;
             }
 
             return 0;
@@ -277,18 +277,21 @@ namespace {
 
     int nvapi()
     {
+        std::cout << "[NVAPI]" << std::endl;
+
         //------------------------------------------------------------------------------
         // Initialize NVAPI.
         if (NvAPI_Initialize() != NVAPI_OK) {
-            std::cerr << "Failed to initialize NVAPI!" << std::endl;
+            std::cerr << "Error: Failed to initialize NVAPI!" << std::endl;
             return EXIT_FAILURE;
         }
 
         //------------------------------------------------------------------------------
         // Print interface version string.
         NvAPI_ShortString interface_version = {};
-        
+
         if (NvAPI_GetInterfaceVersionString(interface_version) == NVAPI_OK) {
+            std::cout << std::endl;
             std::cout << "NVAPI interface version: " << interface_version << std::endl;
         }
 
@@ -304,12 +307,14 @@ namespace {
         NvS32 mosaic_overlap_y = 0;
 
         if (NvAPI_Mosaic_GetCurrentTopo(&mosaic_topology, &mosaic_display_settings, &mosaic_overlap_x, &mosaic_overlap_y) != NVAPI_OK) {
-            std::cerr << "Failed to get mosaic topology!" << std::endl;
+            std::cerr << "Error: Failed to get mosaic topology!" << std::endl;
             return EXIT_FAILURE;
         }
 
         //------------------------------------------------------------------------------
         // If a topology is enabled show which one.
+        std::cout << std::endl;
+
         if (mosaic_topology.enabled) {
             std::cout << "Mosaic is ENABLED: ";
 
@@ -351,7 +356,7 @@ namespace {
             NvU32 num_grids = 0;
 
             if (NvAPI_Mosaic_EnumDisplayGrids(nullptr, &num_grids) != NVAPI_OK) {
-                std::cerr << "Failed to enumerate display grids!" << std::endl;
+                std::cerr << "Error: Failed to enumerate display grids!" << std::endl;
                 return EXIT_FAILURE;
             }
 
@@ -362,7 +367,7 @@ namespace {
             });
 
             if (NvAPI_Mosaic_EnumDisplayGrids(display_grids.data(), &num_grids) != NVAPI_OK) {
-                std::cerr << "Failed to enumerate display grids!" << std::endl;
+                std::cerr << "Error: Failed to enumerate display grids!" << std::endl;
                 return EXIT_FAILURE;
             }
 
@@ -380,7 +385,7 @@ namespace {
         NvU32 num_logical_gpus = 0;
 
         if (NvAPI_EnumLogicalGPUs(logical_gpus, &num_logical_gpus) != NVAPI_OK) {
-            std::cerr << "Failed to enumerate logical GPUs!" << std::endl;
+            std::cerr << "Error: Failed to enumerate logical GPUs!" << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -392,7 +397,7 @@ namespace {
             std::cout << "Logical GPU " << logical_gpu_index << std::endl;
 
             if (NvAPI_GetPhysicalGPUsFromLogicalGPU(logical_gpus[logical_gpu_index], physical_gpus, &num_physical_gpus) != NVAPI_OK) {
-                std::cerr << "Failed to enumerate physical GPUs!" << std::endl;
+                std::cerr << "Error: Failed to enumerate physical GPUs!" << std::endl;
                 continue;
             }
 
@@ -402,7 +407,7 @@ namespace {
                 NvAPI_ShortString name = {};
 
                 if (NvAPI_GPU_GetFullName(physical_gpus[physical_gpu_index], name) != NVAPI_OK) {
-                    std::cerr << "Failed to get GPU name!" << std::endl;
+                    std::cerr << "Error: Failed to get GPU name!" << std::endl;
                     continue;
                 }
 
@@ -411,7 +416,7 @@ namespace {
                 NvU32 num_displays = 0;
 
                 if (NvAPI_GPU_GetAllDisplayIds(physical_gpus[physical_gpu_index], nullptr, &num_displays) != NVAPI_OK) {
-                    std::cerr << "Failed to get conencted displays!" << std::endl;
+                    std::cerr << "Error: Failed to get conencted displays!" << std::endl;
                     continue;
                 }
 
@@ -422,7 +427,7 @@ namespace {
                 });
 
                 if (NvAPI_GPU_GetAllDisplayIds(physical_gpus[physical_gpu_index], displays.data(), &num_displays) != NVAPI_OK) {
-                    std::cerr << "Failed to get conencted displays!" << std::endl;
+                    std::cerr << "Error: Failed to get conencted displays!" << std::endl;
                     continue;
                 }
 
@@ -481,7 +486,7 @@ namespace {
         }
 
         if (NvAPI_EnumPhysicalGPUs(physical_gpus, &num_physical_gpus) != NVAPI_OK) {
-            std::cerr << "Failed to enumerate physical GPUs!" << std::endl;
+            std::cerr << "Error: Failed to enumerate physical GPUs!" << std::endl;
             return EXIT_FAILURE;
         }
 
@@ -498,17 +503,21 @@ namespace {
 
     int directx()
     {
+        std::cout << "[DirectX]" << std::endl;
+
         //------------------------------------------------------------------------------
         // Grab DirectX factory.
         ComPtr<IDXGIFactory4> factory;
 
         if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
-            std::cerr << "Failed to create DXGI factory!" << std::endl;
+            std::cerr << "Error: Failed to create DXGI factory!" << std::endl;
             return EXIT_FAILURE;
         }
 
         //------------------------------------------------------------------------------
         // Enumerate DirectX adapters (GPUs).
+        std::cout << std::endl;
+
         UINT adapter_index = 0;
         IDXGIAdapter* adapter = nullptr;
 
@@ -516,7 +525,7 @@ namespace {
             DXGI_ADAPTER_DESC adapter_desc = {};
 
             if (FAILED(adapter->GetDesc(&adapter_desc))) {
-                std::cerr << "Failed to get adapter description!" << std::endl;
+                std::cerr << "Error: Failed to get adapter description!" << std::endl;
                 continue;
             }
 
@@ -534,7 +543,7 @@ namespace {
                 DXGI_OUTPUT_DESC output_desc = {};
 
                 if (FAILED(output->GetDesc(&output_desc))) {
-                    std::cerr << "Failed to get output description!" << std::endl;
+                    std::cerr << "Error: Failed to get output description!" << std::endl;
                     continue;
                 }
 
@@ -582,6 +591,8 @@ namespace {
 
     int opengl()
     {
+        std::cout << "[OpenGL]" << std::endl;
+
         //------------------------------------------------------------------------------
         // Create a window so we can ...
         const DWORD style = (WS_OVERLAPPED | WS_CAPTION);
